@@ -1,0 +1,11 @@
+torch>=2.2           # PyTorch – 모델 구현·GPU 학습
+numpy>=1.25          # 수치 계산
+pandas>=2.2          # 데이터 처리 및 I/O
+scikit-learn>=1.5    # MinMaxScaler 등 전처리
+scipy>=1.13          # statsmodels 의존
+statsmodels>=0.14    # Granger causality tests
+optuna>=3.6          # 하이퍼파라미터 최적화
+matplotlib>=3.9      # 시각화
+tqdm>=4.66           # 진행 상황 표시
+hurst>=0.0.5         # Hurst exponent 계산
+openpyxl>=3.1        # Excel 입·출력 (pandas ExcelWriter에서 사용)
