@@ -1,4 +1,4 @@
-# Volatility Prediction with GCN and RNN Models using Regime Detection
+# Volatility Prediction with GCN and RNN Models using Regime Detection and Non-linear/Linear causality
 
 This project implements and evaluates various deep learning models (GCN, LSTM, GRU) for predicting stock market volatility. It features a dynamic approach where models can be fine-tuned based on market regime changes detected using the Hurst exponent.
 
