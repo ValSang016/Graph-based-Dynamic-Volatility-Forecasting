@@ -19,7 +19,7 @@ from config import CONFIG
 
 class ModelManager:
     def __init__(self, data, model_type='lstm', window_size=20, training_period=750, 
-                 use_regime_detection=True, num_prev_colors=8, use_cache=True, debug=False):
+                 use_regime_detection=True, num_prev_colors=6, use_cache=True, debug=False):
         
         self.raw_data = data
         self.model_type = model_type.lower()
@@ -96,7 +96,8 @@ class ModelManager:
 
         if self.model_type.startswith('gcn'):
             matrix_method = self.model_type.split('-')[1]
-            initial_matrix = utils.get_adjacency_matrix(self.train_x_initial, method=matrix_method)
+            n_random_val = params.get("n_random", 25) # Use tuned value or default
+            initial_matrix = utils.get_adjacency_matrix(self.train_x_initial, method=matrix_method, n_random=n_random_val)
             model = models.TENet(
                 CONFIG, initial_matrix, self.window_size,
                 hid1=params['hid1'], hid2=params['hid2']
@@ -155,6 +156,8 @@ class ModelManager:
         if self.model_type.startswith('gcn'):
             params["hid1"] = trial.suggest_int("hid1", 10, 100)
             params["hid2"] = trial.suggest_int("hid2", 10, 100)
+            if self.model_type == 'gcn-ete':
+                params["n_random"] = trial.suggest_int("n_random", 10, 100)
         else: # LSTM/GRU
             params["hidden_size"] = trial.suggest_int("hidden_size", 10, 100)
             params["num_layers"] = trial.suggest_int("num_layers", 1, 5)
@@ -211,6 +214,10 @@ class ModelManager:
         
         self.best_params = study.best_params
         best_model_state = study.best_trial.user_attrs["best_model_state"]
+        
+        if self.model_type == 'gcn-ete':
+            self.n_random = self.best_params.get("n_random", 25) # Use found value or default
+            if self.debug: print(f"Best n_random for ETE found: {self.n_random}")
         
         # 2. Build and load the best model
         self.model = self._build_model(self.best_params)

@@ -18,19 +18,19 @@ def compute_hurst_series(world_index_path='data/df_world.csv', window=250):
     
     return pd.DataFrame({'Hurst': hurst_vals}, index=dates)
 
-def detect_regimes(hurst_df, num_prev_colors=8, thresholds=(0.45, 0.55)):
+def detect_regimes(hurst_df, num_prev_colors=8, thresholds=0.5):
     change_dates = []
-    prev_color = 'green' # Start with a neutral color
+    prev_color = 'blue' # Start with a neutral color
     
     for i in range(10, len(hurst_df)):
         recent_hurst = hurst_df['Hurst'].iloc[i-10:i]
         
-        is_trending = (recent_hurst > thresholds[1]).sum() >= num_prev_colors
-        is_reverting = (recent_hurst < thresholds[0]).sum() >= num_prev_colors
+        is_trending = (recent_hurst >= thresholds).sum() >= num_prev_colors
+        is_reverting = (recent_hurst < thresholds).sum() >= num_prev_colors
         
-        color = 'red' if is_trending else 'blue' if is_reverting else 'green'
+        color = 'red' if is_trending else 'blue' if is_reverting else prev_color
         
-        if color != 'green' and color != prev_color:
+        if color != prev_color:
             change_dates.append(hurst_df.index[i].strftime('%Y-%m-%d'))
             prev_color = color
             
@@ -69,10 +69,51 @@ def _compute_TE(X):
     return TE
 
 def _compute_ETE(X, TE_matrix, n_random):
-    # This is a simplified version of your ETE calculation for brevity.
-    # The full logic from your script should be placed here.
-    # ... (full ETE calculation logic) ...
-    return TE_matrix - 0.01 # Placeholder for actual ETE calculation
+    m, M = np.min(X), np.max(X)
+    n = X.shape[1]
+    RTE_matrix_all = np.zeros([X.shape[1], X.shape[1], n_random])
+    for nn in range(n_random):
+        RTE_matrix = np.zeros((X.shape[1], X.shape[1]))
+        for i in range(n):
+            for j in range(n):
+                if i == j: continue
+                xn1, xn, yn = X[1:, j], X[:-1, j], X[:-1, i]
+                xn1_b, xn_b, yn_b = _value_to_bin(xn1, m, M), _value_to_bin(xn, m, M), _value_to_bin(yn, m, M)
+                np.random.shuffle(yn_b)
+
+                x_freq = np.unique(xn_b, return_counts=True)
+                x1_freq = np.unique(np.stack([xn_b, xn1_b], axis=1), return_counts=True, axis=0)
+                y_freq = np.unique(np.stack([xn_b, yn_b], axis=1), return_counts=True, axis=0)
+                xy_freq = np.unique(np.stack([xn_b, xn1_b, yn_b], axis=1), return_counts=True, axis=0)
+                
+                p_x, p_xx1, p_xy, p_xyz = (f[1] / f[1].sum() for f in [x_freq, x1_freq, y_freq, xy_freq])
+                
+                RTE_xy = 0
+                for k, triple in enumerate(xy_freq[0]):
+                    p_xyz_k = p_xyz[k]
+                    idx_xx1 = np.where((x1_freq[0] == triple[:2]).all(axis=1))[0][0]
+                    idx_xy  = np.where((y_freq[0] == triple[[0,2]]).all(axis=1))[0][0]
+                    idx_x   = np.where(x_freq[0] == triple[0])[0][0]
+                    RTE_xy += p_xyz_k * np.log2((p_xyz_k * p_x[idx_x]) / (p_xx1[idx_xx1] * p_xy[idx_xy] + 1e-9) + 1e-9)
+                RTE_matrix[i, j] = RTE_xy
+        RTE_matrix_all[:, :, nn] = RTE_matrix
+        
+    ETE_matrix = np.zeros((X.shape[1], X.shape[1]))
+    for i in range(X.shape[1]):
+        for j in range(X.shape[1]):
+            if i == j:
+                continue
+            TE = TE_matrix[i, j]
+            rte_array = RTE_matrix_all[i, j, :]
+            if TE - np.mean(rte_array) - np.std(rte_array) / (n_random ** 0.5) > 0:
+                ETE_matrix[i, j] = TE - np.mean(rte_array)
+                
+    if np.all(ETE_matrix == 0):
+        matrix = np.full((10, 10), 0.001)
+        np.fill_diagonal(matrix, 0)
+        return matrix
+
+    return ETE_matrix
 
 def get_adjacency_matrix(data, method='ete', n_random=25):
     """Factory function to get the specified adjacency matrix."""

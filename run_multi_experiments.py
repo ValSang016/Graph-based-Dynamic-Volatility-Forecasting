@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import os
 from itertools import product
+import torch
 
 from engine import ModelManager
 from config import CONFIG
@@ -117,4 +118,9 @@ def main():
     print(summary_df)
 
 if __name__ == '__main__':
+    if CONFIG.CUDA_AVAILABLE:
+        torch.cuda.set_device(CONFIG.GPU)
+        print("Cuda device is set to GPU:", CONFIG.GPU)
+    else : 
+        print("Cuda device is set to CPU")
     main()
