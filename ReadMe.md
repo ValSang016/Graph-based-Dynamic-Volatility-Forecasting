@@ -21,8 +21,8 @@ This project implements and evaluates various deep learning models (GCN, LSTM, G
 First, clone the repository and create a virtual environment:
 
 ```bash
-git clone <your-repo-url>
-cd <your-repo-name>
+git clone https://github.com/ValSang016/Graph-based-Dynamic-Volatility-Forecasting.git
+cd Graph-based-Dynamic-Volatility-Forecasting
 python -m venv venv
 source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
 ```
